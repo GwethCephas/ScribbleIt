@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +26,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
 
@@ -75,11 +77,14 @@ fun ScribbleDialog(
                         onValueChange = onTitleChange,
                         label = { Text("Title") },
                         singleLine = true,
-                        keyboardActions = KeyboardActions {
-                            focusManager.moveFocus(
-                                FocusDirection.Down
-                            )
-                        }
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = {
+                                focusManager.moveFocus(FocusDirection.Next)
+                            }
+                        )
 
                     )
 
@@ -93,9 +98,14 @@ fun ScribbleDialog(
                         modifier = modifier
                             .fillMaxWidth()
                             .height(160.dp),
-                        keyboardActions = KeyboardActions {
-                            focusManager.clearFocus()
-                        }
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                focusManager.clearFocus()
+                            }
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
