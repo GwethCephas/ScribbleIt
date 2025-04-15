@@ -82,7 +82,7 @@ fun ScribbleDialog(
                         ),
                         keyboardActions = KeyboardActions(
                             onNext = {
-                                focusManager.moveFocus(FocusDirection.Next)
+                                focusManager.moveFocus(FocusDirection.Down)
                             }
                         )
 

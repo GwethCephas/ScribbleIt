@@ -1,6 +1,7 @@
 package com.ceph.scribbleit.presentation.homeScreen
 
 import android.os.Build
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.ceph.scribbleit.data.local.ScribbleEntity
 import com.ceph.scribbleit.presentation.components.EmptyScreen
@@ -49,6 +52,7 @@ fun HomeScreen(
     isDarkTheme: Boolean
 ) {
 
+    val context = LocalContext.current
     val scribbleState by viewModel.scribbleState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val scope = rememberCoroutineScope()
@@ -56,6 +60,15 @@ fun HomeScreen(
     var content by remember { mutableStateOf("") }
     var isBottomSheetVisible by remember { mutableStateOf(false) }
     var selectedScribble by remember { mutableStateOf<ScribbleEntity?>(null) }
+
+    LaunchedEffect(key1 = Unit) {
+        viewModel.scribbleEventFlow.collect {
+            if (it is ScribbleUiEvent.ShowSnackBar) {
+                Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
