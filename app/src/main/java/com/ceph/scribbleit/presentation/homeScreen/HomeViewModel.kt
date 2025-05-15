@@ -7,11 +7,8 @@ import com.ceph.scribbleit.domain.repository.ScribbleRepository
 import com.ceph.scribbleit.presentation.scribbles.ScribbleUiEvent
 import com.ceph.scribbleit.presentation.scribbles.ScribbleUiState
 import com.ceph.scribbleit.presentation.scribbles.SortType
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
@@ -21,69 +18,53 @@ class HomeViewModel(
     private val _scribbleState = MutableStateFlow(ScribbleUiState())
     val scribbleState = _scribbleState.asStateFlow()
 
-    private val _scribbleEventFlow = MutableSharedFlow<ScribbleUiEvent>()
+    private val _scribbleEventFlow = MutableSharedFlow<ScribbleUiEvent>(
+        replay = 1,
+        extraBufferCapacity = 1
+    )
     val scribbleEventFlow = _scribbleEventFlow.asSharedFlow()
+    var recentlyDeletedScribble: ScribbleEntity? = null
+
+    private var currentJob: Job? = null
 
     init {
-        viewModelScope.launch {
-            repository.getAllScribblesByTimeStamp().collect { list ->
-                _scribbleState.update { it.copy(scribbles = list) }
+        collectScribbles(SortType.TIMESTAMP)
+    }
+
+    private fun collectScribbles(sortType: SortType) {
+        currentJob?.cancel()
+        currentJob = viewModelScope.launch {
+            val flow = when (sortType) {
+                SortType.TITLE -> repository.getAllScribblesByTitle()
+                SortType.TIMESTAMP -> repository.getAllScribblesByTimeStamp()
+            }
+
+            flow.distinctUntilChanged().collect { list ->
+                _scribbleState.update {
+                    it.copy(
+                        scribbles = list
+                    )
+                }
             }
         }
     }
 
-
     fun onEvent(event: ScribbleUiEvent) {
         when (event) {
-            ScribbleUiEvent.DeleteAllScribbles -> {
-                viewModelScope.launch {
-                    repository.deleteAllScribbles()
-                    _scribbleState.update {
-                        it.copy(
-                            scribbles = emptyList()
-                        )
-                    }
-                    _scribbleEventFlow.emit(ScribbleUiEvent.ShowSnackBar("All scribbles deleted"))
-                }
-            }
-
-            is ScribbleUiEvent.DeleteScribble -> {
-                viewModelScope.launch {
-                    repository.deleteScribble(event.id)
-                    _scribbleEventFlow.emit(ScribbleUiEvent.ShowSnackBar("Scribble deleted"))
-                }
-            }
-
-            ScribbleUiEvent.HideDialog -> {
-                _scribbleState.update {
-                    it.copy(
-                        isDialogVisible = false
-                    )
-                }
-            }
-
-            ScribbleUiEvent.LoadScribbles -> {
-                viewModelScope.launch {
-                    repository.getAllScribblesByTimeStamp().collect { scribbles ->
-                        _scribbleState.value = _scribbleState.value.copy(
-                            scribbles = scribbles
-                        )
-                    }
-
-                }
-            }
-
             is ScribbleUiEvent.SaveScribble -> {
-                if (event.title.isNotBlank() && event.content.isNotBlank()) {
+                val title = event.title.trim()
+                val content = event.content.trim()
+
+                if (title.isNotEmpty() && content.isNotEmpty()) {
                     viewModelScope.launch {
                         repository.insertScribble(
                             ScribbleEntity(
-                                title = event.title,
-                                content = event.content,
+                                title = title,
+                                content = content,
                                 timestamp = System.currentTimeMillis()
                             )
                         )
-                        _scribbleEventFlow.emit(ScribbleUiEvent.ShowSnackBar("Scribble Saved"))
+                        _scribbleEventFlow.emit(ScribbleUiEvent.ShowSnackBar("Scribble saved"))
                         _scribbleState.update {
                             it.copy(
                                 isDialogVisible = false,
@@ -95,46 +76,60 @@ class HomeViewModel(
                 }
             }
 
-            ScribbleUiEvent.ShowDialog -> {
-                _scribbleState.update {
-                    it.copy(
-                        isDialogVisible = true
-                    )
+            is ScribbleUiEvent.DeleteScribble -> {
+                viewModelScope.launch {
+                    val deleted = repository.getScribbleById(event.id)
+                    deleted?.let {
+                        recentlyDeletedScribble = it
+                        repository.deleteScribble(event.id)
+                        _scribbleEventFlow.emit(
+                            ScribbleUiEvent.ShowSnackBar(
+                                message = "Scribble deleted",
+                                action = "Undo"
+                            )
+                        )
+                    }
+
                 }
+            }
+
+            ScribbleUiEvent.DeleteAllScribbles -> {
+                viewModelScope.launch {
+                    if (repository.getAllScribblesByTitle().first().isNotEmpty()) {
+                        repository.deleteAllScribbles()
+                        _scribbleEventFlow.emit(ScribbleUiEvent.ShowSnackBar("Deleted all scribbles"))
+                    } else {
+                        _scribbleEventFlow.emit(ScribbleUiEvent.ShowSnackBar("No scribbles to delete"))
+                    }
+                }
+            }
+
+            is ScribbleUiEvent.SortScribbles -> {
+                collectScribbles(event.sortType)
+            }
+
+            ScribbleUiEvent.ShowDialog -> {
+                _scribbleState.update { it.copy(isDialogVisible = true) }
+            }
+
+            ScribbleUiEvent.HideDialog -> {
+                _scribbleState.update { it.copy(isDialogVisible = false) }
             }
 
             is ScribbleUiEvent.ShowSnackBar -> {
                 viewModelScope.launch {
                     _scribbleEventFlow.emit(ScribbleUiEvent.ShowSnackBar(event.message))
                 }
-
             }
 
-            is ScribbleUiEvent.SortScribbles -> {
-                when (event.sortType) {
-                    SortType.TITLE -> {
-                        viewModelScope.launch {
-                            repository.getAllScribblesByTitle().collect { scribbles ->
-                                _scribbleState.value = _scribbleState.value.copy(
-                                    scribbles = scribbles
-                                )
-                            }
-
-                        }
-                    }
-
-                    SortType.TIMESTAMP -> {
-                        viewModelScope.launch {
-                            repository.getAllScribblesByTimeStamp().collect { scribbles ->
-                                _scribbleState.value = _scribbleState.value.copy(
-                                    scribbles = scribbles
-                                )
-                            }
-
-                        }
-                    }
+            is ScribbleUiEvent.UndoDelete -> {
+                viewModelScope.launch {
+                     repository.insertScribble(event.scribble)
+                    _scribbleEventFlow.emit(ScribbleUiEvent.ShowSnackBar("Scribble restored"))
                 }
+
             }
+
         }
     }
 }

@@ -2,7 +2,7 @@
 <resources>
     <style name="Theme.ScribbleIt.MySplash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/white</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/notebook</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/scribble</item>
         <item name="postSplashScreenTheme">@style/Theme.ScribbleIt</item>
     </style>
 </resources>

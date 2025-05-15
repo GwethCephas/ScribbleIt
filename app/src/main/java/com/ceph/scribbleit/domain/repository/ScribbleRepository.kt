@@ -11,9 +11,12 @@ interface ScribbleRepository {
 
     suspend fun deleteAllScribbles()
 
+    suspend fun getScribbleById(id: Int): ScribbleEntity?
+
     fun getAllScribblesByTimeStamp(): Flow<List<ScribbleEntity>>
 
     fun getAllScribblesByTitle(): Flow<List<ScribbleEntity>>
+
 
 
 }

@@ -31,7 +31,7 @@ fun SortMenu(
             .padding(end = 16.dp)
     ) {
         Icon(
-            imageVector = Icons.Default.MoreVert, // Or any icon you want
+            imageVector = Icons.Default.MoreVert,
             contentDescription = "Sort Menu",
             modifier = Modifier
                 .clickable { expanded = true },

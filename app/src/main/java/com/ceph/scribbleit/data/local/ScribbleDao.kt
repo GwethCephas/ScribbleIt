@@ -23,4 +23,8 @@ interface ScribbleDao {
     @Query("DELETE  FROM scribbles")
     suspend fun deleteAllScribbles()
 
+    @Query("SELECT * FROM scribbles WHERE id = :id LIMIT 1")
+    suspend fun getScribbleById(id: Int): ScribbleEntity?
+
+
 }

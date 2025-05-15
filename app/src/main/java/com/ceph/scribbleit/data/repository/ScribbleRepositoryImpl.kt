@@ -26,6 +26,10 @@ class ScribbleRepositoryImpl(
         dao.deleteAllScribbles()
     }
 
+    override suspend fun getScribbleById(id: Int): ScribbleEntity? {
+        return dao.getScribbleById(id)
+    }
+
     override fun getAllScribblesByTimeStamp(): Flow<List<ScribbleEntity>> {
         return dao.getAllScribblesByTimeStamp()
             .catch { e ->
